@@ -25,13 +25,21 @@ ENV PYTHONUNBUFFERED=1 \
 
 COPY requirements.txt /tmp/requirements.txt
 
-# 基础镜像已经包含 PyTorch，避免重复安装 torch
-# 同时修正老版本 sentencepiece 在新环境中的安装问题
-RUN grep -v '^torch==' /tmp/requirements.txt \
-      | sed 's/sentencepiece==0\.1\.9/sentencepiece==0.1.99/' \
+# 基础镜像中已经安装了 torch，因此从 requirements 中排除 torch。
+# protobuf 3.19.0 较老，改为兼容性更好的 3.20.3。
+RUN sed \
+      -e '/^torch==/d' \
+      -e 's/^protobuf==3\.19\.0$/protobuf==3.20.3/' \
+      /tmp/requirements.txt \
       > /tmp/requirements-docker.txt \
+    && echo "===== Docker requirements =====" \
+    && cat /tmp/requirements-docker.txt \
+    && echo "===============================" \
     && python -m pip install --upgrade pip setuptools wheel \
-    && python -m pip install -r /tmp/requirements-docker.txt
+    && python -m pip install \
+         --prefer-binary \
+         --no-cache-dir \
+         -r /tmp/requirements-docker.txt
 
 COPY . .
 
